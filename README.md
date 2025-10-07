@@ -2,7 +2,7 @@
 
 ## Installing
 
-1. Clone
+1. Clone (SSH)
 ```bash
 $ git clone git@github.com:VandersonTorres/thomas-net-rp.git
 ```
