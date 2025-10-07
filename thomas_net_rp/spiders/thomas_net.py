@@ -9,10 +9,10 @@ class ThomasNetSpider(scrapy.Spider):
     name = "thomas_net"
     allowed_domains = ["www.thomasnet.com"]
     start_urls = [
-        "https://www.thomasnet.com/suppliers/search?cov=NA&heading=55550206&coverage_area=NA&act=D",  # packaging
+        # "https://www.thomasnet.com/suppliers/search?cov=NA&heading=55550206&coverage_area=NA&act=D",  # packaging
         "https://www.thomasnet.com/suppliers/search?cov=NA&heading=41463209&searchsource=suppliers&searchterm=janitor&what=Janitorial+Equipment+&+Supplies=&coverage_area=NA&act=D",  # janitorial / sanitation
-        "https://www.thomasnet.com/suppliers/search?cov=NA&heading=70203807&searchsource=suppliers&searchterm=safety&what=Safety+Equipment+&+Supplies=&coverage_area=NA&act=D",  # safety supplies
-        "https://www.thomasnet.com/suppliers/search?cov=NA&heading=49651003&searchsource=suppliers_home&searchterm=mainten&what=Maintenance+Equipment+&+Supplies&act=D",  # maintenance supplies
+        # "https://www.thomasnet.com/suppliers/search?cov=NA&heading=70203807&searchsource=suppliers&searchterm=safety&what=Safety+Equipment+&+Supplies=&coverage_area=NA&act=D",  # safety supplies
+        # "https://www.thomasnet.com/suppliers/search?cov=NA&heading=49651003&searchsource=suppliers_home&searchterm=mainten&what=Maintenance+Equipment+&+Supplies&act=D",  # maintenance supplies
     ]
 
     def parse(self, response):
@@ -64,22 +64,22 @@ class ThomasNetSpider(scrapy.Spider):
         supplier_year_established = data_json.get("yearFounded")
         supplier_company_type = ""
         supplier_additional_activities = ""
-        
+
         busines_json = jsearch("props.pageProps.businesDetailsSections", next_data_script)
         for section in busines_json.get("firstColumnSections", []):
-            target_text = " ".join([element.get("text", "") for element in section.get("items", [])])
+            try:
+                target_text = " ".join([element.get("text", "") for element in section.get("items", [])])
+            except TypeError:
+                self.logger.warning("Did not find info from firstColumnSections")
+                continue
+
             if section.get("label") == "Primary Company Type":
                 supplier_company_type = target_text
             elif section.get("label") == "Additional Activities":
                 supplier_additional_activities = target_text
 
         if not supplier_url:
-            self.crawler.stats.inc_value(
-                "missing_url/"
-                f"{supplier_category.lower().replace(' ', '')}/"
-                f"{supplier_name.lower().replace(' ', '')}/"
-                f"{response.url}"
-            )
+            self.crawler.stats.inc_value("missing_url/"f"{supplier_category.lower().replace(' ', '')}/")
 
         item = {
             "additional_activities": supplier_additional_activities,
