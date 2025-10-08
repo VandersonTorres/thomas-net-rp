@@ -9,8 +9,8 @@ class ThomasNetSpider(scrapy.Spider):
     name = "thomas_net"
     allowed_domains = ["www.thomasnet.com"]
     start_urls = [
-        # "https://www.thomasnet.com/suppliers/search?cov=NA&heading=55550206&coverage_area=NA&act=D",  # packaging
-        "https://www.thomasnet.com/suppliers/search?cov=NA&heading=41463209&searchsource=suppliers&searchterm=janitor&what=Janitorial+Equipment+&+Supplies=&coverage_area=NA&act=D",  # janitorial / sanitation
+        "https://www.thomasnet.com/suppliers/search?cov=NA&heading=55550206&coverage_area=NA&act=D",  # packaging
+        # "https://www.thomasnet.com/suppliers/search?cov=NA&heading=41463209&searchsource=suppliers&searchterm=janitor&what=Janitorial+Equipment+&+Supplies=&coverage_area=NA&act=D",  # janitorial / sanitation
         # "https://www.thomasnet.com/suppliers/search?cov=NA&heading=70203807&searchsource=suppliers&searchterm=safety&what=Safety+Equipment+&+Supplies=&coverage_area=NA&act=D",  # safety supplies
         # "https://www.thomasnet.com/suppliers/search?cov=NA&heading=49651003&searchsource=suppliers_home&searchterm=mainten&what=Maintenance+Equipment+&+Supplies&act=D",  # maintenance supplies
     ]
@@ -26,15 +26,18 @@ class ThomasNetSpider(scrapy.Spider):
 
         parsed_url = urlparse(response.url)
 
-        suppliers_urls = [
-            f"{supplier.get('url')}?{parsed_url.query}"
+        suppliers_urls_set = [
+            {
+                "supplier_url": f"{supplier.get('url')}?{parsed_url.query}",
+                "supplier_page": jsearch("item.sameAs[0]", supplier)
+            }
             for supplier in suppliers_data.get("itemListElement")
         ]
-        for supplier in suppliers_urls:
+        for supplier in suppliers_urls_set:
             yield scrapy.Request(
-                url=supplier,
+                url=supplier.get("supplier_url"),
                 callback=self.parse_supplier,
-                cb_kwargs={"supplier_category": category},
+                cb_kwargs={"supplier_category": category, "supplier_page": supplier.get("supplier_page")},
             )
 
         # Pagination
@@ -48,7 +51,7 @@ class ThomasNetSpider(scrapy.Spider):
                 next_page_url = urlunparse(parsed_url._replace(query=new_query))
                 yield scrapy.Request(url=next_page_url)
 
-    def parse_supplier(self, response, supplier_category):
+    def parse_supplier(self, response, supplier_category, supplier_page):
         try:
             next_data_script = json.loads(response.css("#__NEXT_DATA__ ::text").get())
         except json.JSONDecodeError:
@@ -56,7 +59,7 @@ class ThomasNetSpider(scrapy.Spider):
             return
 
         data_json = jsearch("props.pageProps.data", next_data_script)
-        supplier_url = jsearch("heading.url", data_json)
+        supplier_url = supplier_page or jsearch("heading.url", data_json)
         supplier_description = jsearch("heading.description", data_json) or data_json.get("description")
         supplier_name = data_json.get("name")
         supplier_headcount = data_json.get("numberEmployees")
